@@ -3,40 +3,25 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
+const Profile = require('../models/Profile');
 
 const PROFILE_PATH = path.join(__dirname, '../uploads/profile');
-const PROFILE_JSON = path.join(PROFILE_PATH, 'profile.json');
 if (!fs.existsSync(PROFILE_PATH)) fs.mkdirSync(PROFILE_PATH, { recursive: true });
 
-// Function to load profile from JSON
-const loadProfile = () => {
-  try {
-    if (fs.existsSync(PROFILE_JSON)) {
-      const data = fs.readFileSync(PROFILE_JSON, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch (err) {
-    console.error('Error loading profile:', err);
+// Function to get profile from DB
+const getProfile = async () => {
+  let profile = await Profile.findOne();
+  if (!profile) {
+    profile = new Profile({
+      profileImage: '',
+      images: [],
+      name: 'Admin',
+      bio: 'Radio journalist, field reporter and storyteller.'
+    });
+    await profile.save();
   }
-  return {
-    profileImage: '',
-    images: [],
-    name: 'Admin',
-    bio: 'Radio journalist, field reporter and storyteller.'
-  };
+  return profile;
 };
-
-// Function to save profile to JSON
-const saveProfile = (profileData) => {
-  try {
-    fs.writeFileSync(PROFILE_JSON, JSON.stringify(profileData, null, 2));
-  } catch (err) {
-    console.error('Error saving profile:', err);
-  }
-};
-
-// Load profile data
-let profile = loadProfile();
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, PROFILE_PATH),
@@ -45,47 +30,67 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // GET profile
-router.get('/', (req, res) => {
-  res.json(profile);
+router.get('/', async (req, res) => {
+  try {
+    const profile = await getProfile();
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 
 // POST multiple profile images
-router.post('/image', upload.array('image', 10), (req, res) => {
-  if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'No files uploaded' });
-  const urls = req.files.map(f => '/uploads/profile/' + f.filename);
-  profile.images = [...(profile.images || []), ...urls];
-  // Set the first image as profileImage if not set
-  if (!profile.profileImage && urls.length > 0) profile.profileImage = urls[0];
-  saveProfile(profile);
-  res.json({ urls });
+router.post('/image', upload.array('image', 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'No files uploaded' });
+    const urls = req.files.map(f => '/uploads/profile/' + f.filename);
+    const profile = await getProfile();
+    profile.images = [...(profile.images || []), ...urls];
+    // Set the first image as profileImage if not set
+    if (!profile.profileImage && urls.length > 0) profile.profileImage = urls[0];
+    await profile.save();
+    res.json({ urls });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // DELETE a profile image by URL
-router.delete('/image', (req, res) => {
-  const { url } = req.body;
-  if (!url) return res.status(400).json({ message: 'No url provided' });
-  profile.images = (profile.images || []).filter(img => img !== url);
-  if (profile.profileImage === url) profile.profileImage = profile.images[0] || '';
-  // Optionally delete file from disk
-  const filePath = path.join(__dirname, '../..', url);
-  fs.unlink(filePath, () => {});
-  saveProfile(profile);
-  res.json({ images: profile.images, profileImage: profile.profileImage });
+router.delete('/image', async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ message: 'No url provided' });
+    const profile = await getProfile();
+    profile.images = (profile.images || []).filter(img => img !== url);
+    if (profile.profileImage === url) profile.profileImage = profile.images[0] || '';
+    await profile.save();
+    // Optionally delete file from disk
+    const filePath = path.join(__dirname, '../..', url);
+    fs.unlink(filePath, () => {});
+    res.json({ images: profile.images, profileImage: profile.profileImage });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // PATCH profile info (name, bio, profileImage)
-router.patch('/', (req, res) => {
-  const { name, bio, profileImage } = req.body;
-  if (name) profile.name = name;
-  if (bio) profile.bio = bio;
-  if (profileImage && profile.images.includes(profileImage)) {
-    profile.profileImage = profileImage;
-    // Move to front
-    profile.images = [profileImage, ...profile.images.filter(img => img !== profileImage)];
+router.patch('/', async (req, res) => {
+  try {
+    const { name, bio, profileImage } = req.body;
+    const profile = await getProfile();
+    if (name) profile.name = name;
+    if (bio) profile.bio = bio;
+    if (profileImage && profile.images.includes(profileImage)) {
+      profile.profileImage = profileImage;
+      // Move to front
+      profile.images = [profileImage, ...profile.images.filter(img => img !== profileImage)];
+    }
+    await profile.save();
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-  saveProfile(profile);
-  res.json(profile);
 });
 
 module.exports = router;
