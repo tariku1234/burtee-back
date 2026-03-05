@@ -7,9 +7,20 @@ const connectDB = require('./config/db');
 const app = express();
 connectDB();
 
-app.use(cors());
+// allow requests from the deployed frontend; fall back to localhost for local dev
+const frontendOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
+app.use(cors({ origin: frontendOrigin }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// if React build exists, serve it (optional)
+if (process.env.NODE_ENV === 'production') {
+  const clientBuild = path.join(__dirname, '..', 'client', 'build');
+  app.use(express.static(clientBuild));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuild, 'index.html'));
+  });
+}
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
