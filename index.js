@@ -28,6 +28,19 @@ app.use(
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Routes (API) - placed before static serving so they are always hit
+console.log('Loading routes...');
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/articles', require('./routes/articles'));
+app.use('/api/uploads', require('./routes/uploads'));
+app.use('/api/contact', require('./routes/contact'));
+app.use('/api/profile', require('./routes/profile'));
+app.use('/api/events', require('./routes/events'));
+console.log('Routes loaded successfully');
+
+// simple ping for sanity check
+app.get('/api/ping', (req, res) => res.json({ ok: true }));
+
 // if React build exists, serve it (optional)
 if (process.env.NODE_ENV === 'production') {
   const clientBuild = path.join(__dirname, '..', 'client', 'build');
@@ -36,17 +49,6 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
 }
-
-// Routes
-console.log('Loading routes...');
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/articles', require('./routes/articles'));
-
-app.use('/api/uploads', require('./routes/uploads'));
-app.use('/api/contact', require('./routes/contact'));
-app.use('/api/profile', require('./routes/profile'));
-app.use('/api/events', require('./routes/events'));
-console.log('Routes loaded successfully');
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
