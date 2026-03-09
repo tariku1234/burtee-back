@@ -3,6 +3,8 @@ const multer = require('multer');
 const router = express.Router();
 const Profile = require('../models/Profile');
 
+console.log('Profile route loaded successfully');
+
 // Function to get profile from DB
 const getProfile = async () => {
   let profile = await Profile.findOne();
@@ -23,10 +25,13 @@ const upload = multer({ storage });
 
 // GET profile
 router.get('/', async (req, res) => {
+  console.log('GET /api/profile called');
   try {
     const profile = await getProfile();
+    console.log('Profile fetched:', profile);
     res.json(profile);
   } catch (err) {
+    console.error('Error in GET /api/profile:', err);
     res.status(500).json({ message: err.message });
   }
 });

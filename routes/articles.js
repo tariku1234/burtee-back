@@ -28,10 +28,12 @@ router.get('/:slug', async (req, res) => {
 
 // Admin: list all articles
 router.get('/admin/all', authMiddleware, async (req, res) => {
+  console.log('GET /api/articles/admin/all called');
   try {
     const arts = await Article.find({}).sort({ createdAt: -1 });
+    console.log('Articles fetched:', arts.length);
     res.json(arts);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { console.error('Error in GET /api/articles/admin/all:', err); res.status(500).json({ message: err.message }); }
 });
 
 // Admin: get by id
@@ -53,8 +55,10 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
 // Admin create
 router.post('/', authMiddleware, async (req, res) => {
+  console.log('POST /api/articles called');
   try {
     let { slug, ...articleData } = req.body;
+    console.log('Article data:', articleData);
 
     // If no slug provided or it's problematic, generate one
     if (!slug || slug === 'slug' || slug.trim() === '') {
@@ -74,6 +78,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const art = new Article({ ...articleData, slug });
     await art.save();
+    console.log('Article created:', art._id);
     res.json(art);
   } catch (err) {
     console.error('Error creating article:', err);

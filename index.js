@@ -38,6 +38,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Routes
+console.log('Loading routes...');
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/articles', require('./routes/articles'));
 
@@ -45,6 +46,7 @@ app.use('/api/uploads', require('./routes/uploads'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/events', require('./routes/events'));
+console.log('Routes loaded successfully');
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
