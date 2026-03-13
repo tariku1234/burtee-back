@@ -7,22 +7,30 @@ const connectDB = require('./config/db');
 const app = express();
 connectDB();
 
-// allow requests from the deployed frontend; fall back to localhost for local dev
-// FRONTEND_URL can be a single URL or a comma-separated list of allowed origins
-const frontendOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
+// allow requests from the deployed frontend; fall back to allowing all origins for quick deploy
+// FRONTEND_URL can be a single URL, a comma-separated list, or "*" to allow any origin
+const frontendOrigin = process.env.FRONTEND_URL || '*';
 console.log('CORS will allow origin(s):', frontendOrigin);
 app.use(
   cors({
     origin: (origin, callback) => {
-      // when no origin (e.g. server-to-server) allow it
+      // allow server-to-server, curl, etc.
       if (!origin) return callback(null, true);
-      const allowed = frontendOrigin.split(',');
+
+      // allow all when set explicitly
+      if (frontendOrigin === '*' || frontendOrigin === '*') {
+        return callback(null, true);
+      }
+
+      const allowed = frontendOrigin.split(',').map(s => s.trim());
       if (allowed.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS')); // will trigger error on client
+        console.warn('CORS rejected origin:', origin);
+        callback(new Error('Not allowed by CORS'));
       }
     },
+    credentials: true,
   })
 );
 app.use(express.json());
